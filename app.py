@@ -9,17 +9,18 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import os
-
 app = Flask(__name__)
-app.secret_key = "change-this-development-secret"
+app.secret_key = os.environ.get("SECRET_KEY", "development-secret")
 
-# CHANGE THESE SETTINGS TO MATCH YOUR LOCAL MYSQL ACCOUNT.
 DB_CONFIG = {
-    "host": "localhost",
-    "user": "root",
-    "password": "YOUR_MYSQL_PASSWORD",
-    "database": "fuel_analysis",
+    "host": os.environ.get("DB_HOST", "localhost"),
+    "user": os.environ.get("DB_USER", "root"),
+    "password": os.environ.get("DB_PASSWORD", ""),
+    "database": os.environ.get("DB_NAME", "fuel_analysis"),
+    "port": int(os.environ.get("DB_PORT", "3306"))
 }
+
+
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 CHART_DIR = os.path.join(BASE_DIR, "static", "charts")
