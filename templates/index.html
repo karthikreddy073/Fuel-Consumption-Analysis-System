@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fuel Consumption Analysis System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="hero">
+    <div>
+        <p class="eyebrow">PYTHON • FLASK • MYSQL • DATA ANALYTICS</p>
+        <h1>Fuel Consumption Analysis</h1>
+        <p class="subtitle">Track vehicles, fuel purchases, mileage, and expenses.</p>
+    </div>
+</header>
+
+<main class="container">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div class="alert {{ category }}">{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <section class="stats" aria-label="Dashboard summaries">
+<button type="button" class="stat stat-button" data-report="vehicles" aria-expanded="false"><span>Vehicles</span><strong>{{ data.vehicles|length }}</strong><small>Click to view list</small></button>
+<button type="button" class="stat stat-button" data-report="records" aria-expanded="false"><span>Fuel records</span><strong>{{ data.record_count }}</strong><small>Click to view list</small></button>
+<button type="button" class="stat stat-button" data-report="litres" aria-expanded="false"><span>Total litres</span><strong>{{ "%.2f"|format(data.total_litres) }} L</strong><small>Click to view details</small></button>
+<button type="button" class="stat stat-button" data-report="expenses" aria-expanded="false"><span>Total expense</span><strong>₹{{ "%.2f"|format(data.total_cost) }}</strong><small>Click to view details</small></button>
+</section>
+<section class="panel quick-report" id="quick-report" hidden aria-live="polite">
+<div class="quick-report-heading"><h2 id="quick-report-title">Summary details</h2><button type="button" id="close-report">Close</button></div>
+<div class="quick-report-content" id="report-vehicles" hidden>
+<table><thead><tr><th>Vehicle code</th><th>Vehicle type</th><th>Fuel type</th></tr></thead><tbody>
+{% for v in data.vehicles %}<tr><td>{{ v.vehicle_code }}</td><td>{{ v.vehicle_type }}</td><td>{{ v.fuel_type }}</td></tr>{% else %}<tr><td colspan="3">No vehicles added yet.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="quick-report-content" id="report-records" hidden>
+<table><thead><tr><th>Vehicle</th><th>Date</th><th>Odometer</th><th>Litres</th><th>Cost</th><th>Full tank?</th></tr></thead><tbody>
+{% for r in data.records %}<tr><td>{{ r.vehicle_code }}</td><td>{{ r.fill_date }}</td><td>{{ r.odometer_km }} km</td><td>{{ "%.2f"|format(r.litres) }} L</td><td>₹{{ "%.2f"|format(r.total_cost) }}</td><td>{{ "Yes" if r.full_tank_flag else "No" }}</td></tr>{% else %}<tr><td colspan="6">No fuel records yet.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="quick-report-content" id="report-litres" hidden><p><strong>Total fuel purchased: {{ "%.2f"|format(data.total_litres) }} L</strong></p>
+<table><thead><tr><th>Vehicle</th><th>Date</th><th>Litres</th></tr></thead><tbody>
+{% for r in data.records %}<tr><td>{{ r.vehicle_code }}</td><td>{{ r.fill_date }}</td><td>{{ "%.2f"|format(r.litres) }} L</td></tr>{% else %}<tr><td colspan="3">No fuel records yet.</td></tr>{% endfor %}
+</tbody></table></div>
+<div class="quick-report-content" id="report-expenses" hidden><p><strong>Total fuel expense: ₹{{ "%.2f"|format(data.total_cost) }}</strong></p>
+<table><thead><tr><th>Vehicle</th><th>Date</th><th>Expense</th></tr></thead><tbody>
+{% for r in data.records %}<tr><td>{{ r.vehicle_code }}</td><td>{{ r.fill_date }}</td><td>₹{{ "%.2f"|format(r.total_cost) }}</td></tr>{% else %}<tr><td colspan="3">No fuel expenses yet.</td></tr>{% endfor %}
+</tbody></table></div></section>
+
+    <section class="two-columns">
+        <div class="panel">
+            <h2>Add Vehicle</h2>
+            <form method="POST" action="{{ url_for('add_vehicle') }}">
+                <label>Vehicle code</label>
+                <input name="vehicle_code" placeholder="CAR-002" required maxlength="30">
+                <label>Vehicle type</label>
+                <select name="vehicle_type" required>
+                    <option value="">Select type</option>
+                    <option>Car</option><option>Bike</option><option>Van</option>
+                    <option>Truck</option><option>Bus</option><option>Other</option>
+                </select>
+                <label>Fuel type</label>
+                <select name="fuel_type" required>
+                    <option value="">Select fuel</option>
+                    <option>Petrol</option><option>Diesel</option><option>CNG</option>
+                    <option>Electric</option><option>Other</option>
+                </select>
+                <button type="submit">Add Vehicle</button>
+            </form>
+        </div>
+
+        <div class="panel">
+            <h2>Record Fuel Purchase</h2>
+            <form method="POST" action="{{ url_for('add_fuel_record') }}">
+                <label>Vehicle</label>
+                <select name="vehicle_id" required>
+                    <option value="">Select vehicle</option>
+                    {% for v in data.vehicles %}
+                    <option value="{{ v.vehicle_id }}">{{ v.vehicle_code }} — {{ v.vehicle_type }} ({{ v.fuel_type }})</option>
+                    {% endfor %}
+                </select>
+                <label>Fill date</label>
+                <input type="date" name="fill_date" required value="{{ today }}">
+                <label>Odometer reading (km)</label>
+                <input type="number" name="odometer_km" min="0" step="0.01" placeholder="12500" required>
+                <div class="form-row">
+                    <div><label>Litres</label><input type="number" name="litres" min="0.01" step="0.01" required></div>
+                    <div><label>Total cost (₹)</label><input type="number" name="total_cost" min="0" step="0.01" required></div>
+                </div>
+                <label class="check"><input type="checkbox" name="full_tank_flag"> This purchase filled the tank completely</label>
+                <button type="submit">Save Fuel Record</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Analytics Charts</h2>
+        <p class="muted">Charts update when you add or change records.</p>
+        <div class="charts">
+            <div><h3>Monthly fuel expense</h3><img src="{{ url_for('static', filename='charts/monthly_cost.png') }}?v={{ data.record_count }}" alt="Monthly fuel expense chart"></div>
+            <div><h3>Vehicle mileage</h3><img src="{{ url_for('static', filename='charts/vehicle_mileage.png') }}?v={{ data.record_count }}" alt="Vehicle mileage chart"></div>
+        </div>
+    </section>
+
+    <section class="panel">
+        <h2>Vehicle-wise Mileage Report</h2>
+        <p class="muted">Mileage is calculated only at full-tank checkpoints. Fuel and cost include all fills since the previous full tank.</p>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Vehicle</th><th>Type</th><th>Fuel</th><th>Average mileage</th><th>Valid intervals</th></tr></thead>
+            <tbody>
+            {% for v in data.vehicle_summary %}
+            <tr><td>{{ v.vehicle_code }}</td><td>{{ v.vehicle_type }}</td><td>{{ v.fuel_type }}</td>
+                <td>{% if v.average_mileage is not none %}{{ "%.2f"|format(v.average_mileage) }} km/L{% else %}Not enough data{% endif %}</td>
+                <td>{{ v.interval_count }}</td></tr>
+            {% else %}<tr><td colspan="5">No vehicles yet.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="panel">
+        <h2>Monthly Fuel Expense Summary</h2>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Month</th><th>Total litres</th><th>Total expense</th><th>Fuel records</th></tr></thead>
+            <tbody>
+            {% for m in data.monthly_rows %}
+            <tr><td>{{ m.month }}</td><td>{{ "%.2f"|format(m.total_litres) }} L</td>
+                <td>₹{{ "%.2f"|format(m.total_cost) }}</td><td>{{ m.fill_count }}</td></tr>
+            {% else %}<tr><td colspan="4">No fuel records yet.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="panel">
+        <h2>Full-Tank Mileage Details</h2>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Vehicle</th><th>Date</th><th>Mileage</th><th>Cost/km</th><th>Status</th></tr></thead>
+            <tbody>
+            {% for r in data.mileage_rows %}
+            <tr><td>{{ r.vehicle_code }}</td><td>{{ r.fill_date }}</td>
+                <td>{% if r.mileage is not none %}{{ "%.2f"|format(r.mileage) }} km/L{% else %}—{% endif %}</td>
+                <td>{% if r.cost_per_km is not none %}₹{{ "%.2f"|format(r.cost_per_km) }}{% else %}—{% endif %}</td>
+                <td>{{ r.status }}</td></tr>
+            {% else %}<tr><td colspan="5">No full-tank records yet.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="panel">
+        <h2>Invalid-Reading Report</h2>
+        <p class="muted">Rejected entries are recorded here when possible. Review the reason before re-entering a corrected record.</p>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Vehicle</th><th>Date entered</th><th>Odometer</th><th>Litres</th><th>Reason</th></tr></thead>
+            <tbody>
+            {% for r in data.invalid_rows %}
+            <tr><td>{{ r.vehicle_code or "Unknown" }}</td><td>{{ r.attempted_date or "—" }}</td>
+                <td>{{ r.attempted_odometer or "—" }}</td><td>{{ r.attempted_litres or "—" }}</td><td>{{ r.reason }}</td></tr>
+            {% else %}<tr><td colspan="5">No invalid entries recorded.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </section>
+
+    <section class="panel">
+        <h2>Recent Fuel Records</h2>
+        <div class="table-wrap"><table>
+            <thead><tr><th>Vehicle</th><th>Date</th><th>Odometer</th><th>Litres</th><th>Cost</th><th>Full tank?</th></tr></thead>
+            <tbody>
+            {% for r in data.records %}
+            <tr><td>{{ r.vehicle_code }}</td><td>{{ r.fill_date }}</td><td>{{ r.odometer_km }} km</td>
+                <td>{{ r.litres }} L</td><td>₹{{ r.total_cost }}</td><td>{{ "Yes" if r.full_tank_flag else "No" }}</td></tr>
+            {% else %}<tr><td colspan="6">No fuel records yet.</td></tr>{% endfor %}
+            </tbody>
+        </table></div>
+    </section>
+
+    <p class="footer">Student project demo • Use sample records only • Do not use for official vehicle accounting without verification.</p>
+</main>
+
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+ const panel=document.getElementById("quick-report"), heading=document.getElementById("quick-report-title");
+ const cards=document.querySelectorAll("[data-report]");
+ const names={vehicles:"Vehicle List",records:"Fuel Records List",litres:"Total Litres Details",expenses:"Total Expenses Details"};
+ cards.forEach(card=>card.addEventListener("click",function(){
+  const key=card.dataset.report, same=!panel.hidden && panel.dataset.active===key;
+  document.querySelectorAll(".quick-report-content").forEach(x=>x.hidden=true);
+  cards.forEach(x=>{x.classList.remove("selected");x.setAttribute("aria-expanded","false");});
+  if(same){panel.hidden=true;delete panel.dataset.active;return;}
+  panel.hidden=false;panel.dataset.active=key;heading.textContent=names[key];
+  document.getElementById("report-"+key).hidden=false;
+  card.classList.add("selected");card.setAttribute("aria-expanded","true");
+  panel.scrollIntoView({behavior:"smooth",block:"start"});
+ }));
+ document.getElementById("close-report").addEventListener("click",function(){
+  panel.hidden=true;delete panel.dataset.active;
+  cards.forEach(x=>{x.classList.remove("selected");x.setAttribute("aria-expanded","false");});
+ });
+});
+</script>
+
+</body>
+</html>
